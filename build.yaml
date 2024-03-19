@@ -1,4 +1,4 @@
-# Workflow for building the ACED ETL image and pushing it to the quay.io repository
+# Workflow for building the Bridge2AI Jupyter image and pushing it to the quay.io repository
 
 # Optionally debug via SSH
 # Ref: https://fleetdm.com/engineering/tips-for-github-actions-usability
@@ -8,18 +8,16 @@
 # and intermediary files/artifacts.
 
 # Example:
-#   Web shell: https://tmate.io/t/q8FU3U9SvmMVxAhMHRyExNhr8
-#   SSH: ssh q8FU3U9SvmMVxAhMHRyExNhr8@sfo2.tmate.io
 #
 # - name: Setup tmate session
 #   uses: mxschmitt/action-tmate@v3
 
-name: Build and publish ACED ETL image
+name: Build and publish Bridge2AI Jupyter image
 
 on:
   push:
-    tags:
-      - v**
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -39,5 +37,5 @@ jobs:
     - name: Build
       run: |
         docker login quay.io
-        docker build -t quay.io/ohsu-comp-bio/aced-etl ./etl-job
-        docker push quay.io/ohsu-comp-bio/aced-etl
+        docker build -t quay.io/ohsu-comp-bio/bridge2ai-jupyter .
+        docker push quay.io/ohsu-comp-bio/bridge2ai-jupyter
