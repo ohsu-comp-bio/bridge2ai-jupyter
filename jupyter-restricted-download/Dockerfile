@@ -1,104 +1,78 @@
-ARG ROOT_CONTAINER=quay.io/cdis/ubuntu:focal
-
-FROM $ROOT_CONTAINER
-
-LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
-
-# Fix DL4006
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+FROM quay.io/cdis/scipy-notebook:5cfa60996e84
 USER root
 
-# Install all OS dependencies for the notebook server that starts but lacks all
-# features (e.g., download as all possible file formats)
-ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update --yes && \
-    apt-get install --yes --no-install-recommends \
-    python3.9 \
-    python3-pip \
-    tini \
-    wget \
-    git \
-    curl \
+## Configure default locale, see https://github.com/rocker-org/rocker/issues/19
+RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
+	&& locale-gen en_US.utf8 \
+	&& /usr/sbin/update-locale LANG=en_US.UTF-8
+
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    autoconf \
+    bc \
     ca-certificates \
-    sudo \
+    fonts-dejavu \
+    fonts-texgyre \
+    gfortran \
+    gcc \
+    jq \
+    make \
+    automake \
+    perl \
+    less \
+    libssl1.1 \
+    libssl-dev \
+    libbz2-dev \
     locales \
-    fonts-liberation \
+    pkg-config \
+    tzdata \
     vim \
-    run-one && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
-    locale-gen
+    zlib1g \
+    zlib1g-dev \
+    libcurl4-gnutls-dev \
+    liblzma-dev \
+    openjdk-8-jdk
 
-# Set Python 3.9 as the default Python version
-RUN ln -s /usr/bin/python3.9 /usr/bin/python
+RUN apt-get clean \
+ 	&& rm -rf /var/lib/apt/lists/*
 
-# Add the Python 3.9 executable path to the PATH environment variable
-ENV PATH="/usr/bin/python3.9:$PATH"
+#
+# !!!!!NOTE!!!!!
+# Do not install conda, python, pip, etc dependencies as root
+# It screws up directory permissions
+#
+USER $NB_UID
+WORKDIR /home/$NB_USER
 
-# Upgrade pip to ensure it's associated with Python 3.9.5
-RUN python3.9 -m pip install --upgrade pip
 
-# Remove /usr/bin/pip3 if it exists
-RUN rm -f /usr/bin/pip3
+RUN pip install --upgrade nbconvert==5.6.1 && \
+   pip install --upgrade gen3
 
-# Create a symbolic link from pip3 to pip
-RUN ln -s /usr/bin/pip /usr/bin/pip3
 
-RUN pip install JPype1 jupyter
+#
+# R packages including IRKernel which gets installed globally.
+# See https://github.com/rocker-org/rocker/blob/master/r-base/Dockerfile
+#
+RUN conda config --set unsatisfiable_hints True && \
+    conda clean -tipsy && \
+    fix-permissions $CONDA_DIR && \
+    fix-permissions /home/$NB_USER
 
-RUN jupyter notebook --generate-config
+COPY --chown=jovyan:users resources/custom.js /home/$NB_USER/.jupyter/custom/
+COPY --chown=jovyan:users resources/jupyter_notebook_config.py /home/$NB_USER/.jupyter/tmp.py
+RUN cat /home/$NB_USER/.jupyter/tmp.py >> /home/$NB_USER/.jupyter/jupyter_notebook_config.py && rm /home/$NB_USER/.jupyter/tmp.py
 
 # step 1 to disable downloads:
 RUN jupyter labextension disable @jupyterlab/docmanager-extension:download \
     && jupyter labextension disable @jupyterlab/filebrowser-extension:download
 
-RUN pip install pandas numpy seaborn scipy matplotlib pyNetLogo SALib boto3 awscli --upgrade
-RUN pip install gen3==4.18.0 --upgrade
-RUN pip install jupyter --upgrade
 # step 2 to disable downloads:
 RUN pip uninstall nbconvert --yes
 
-# Create a non-root user for Jupyter without copying /bin or /bin/bash
-ARG NB_USER=jovyan
-ARG NB_UID=1000
-ARG NB_GID=100
-RUN useradd -m -s /bin/bash -N -u $NB_UID $NB_USER && \
-    chown -R $NB_USER:users /home/$NB_USER && \
-    chmod -R u+rwx /home/$NB_USER && \
-    mkdir -p /home/$NB_USER/pd
+RUN pip install gen3
 
-# Configure environment
-ENV CONDA_DIR=/opt/conda \
-    PATH=/usr/local/bin:$PATH \
-    SHELL=/bin/bash \
-    NB_USER=${NB_USER} \
-    NB_UID=${NB_UID} \
-    NB_GID=${NB_GID} \
-    HOME=/home/$NB_USER \
-    LC_ALL=en_US.UTF-8 \
-    LANG=en_US.UTF-8 \
-    LANGUAGE=en_US.UTF-8
-
-# Expose port 8888 for JupyterLab
-EXPOSE 8888
-
-# Add local files as late as possible to avoid cache busting
-RUN wget https://raw.githubusercontent.com/jupyter/docker-stacks/7e1a19a8427f99652c75d1d4fda3df780721b574/images/docker-stacks-foundation/fix-permissions
-RUN mv fix-permissions /usr/local/bin/fix-permissions.sh
-COPY start.sh /usr/local/bin/
-COPY start-notebook.sh /usr/local/bin/
-COPY start-singleuser.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/*.sh
-
-COPY resources/custom.js /home/$NB_USER/.jupyter/custom/
-COPY resources/jupyter_notebook_config.py /home/$NB_USER/.jupyter/tmp.py
-RUN cat /home/$NB_USER/.jupyter/tmp.py >> /home/$NB_USER/.jupyter/jupyter_notebook_config.py && rm /home/$NB_USER/.jupyter/tmp.py
-
-RUN fix-permissions.sh "/home/${NB_USER}"
-
-USER $NB_USER
-
-# Set the default command to start JupyterLab
-WORKDIR /home/$NB_USER
-ENTRYPOINT ["jupyter", "lab", "--allow-root", "--ip=0.0.0.0", "--port=8888", "--no-browser"]
