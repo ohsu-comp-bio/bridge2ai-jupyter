@@ -67,6 +67,10 @@ COPY --chown=jovyan:users resources/custom.js /home/$NB_USER/.jupyter/custom/
 COPY --chown=jovyan:users resources/jupyter_notebook_config.py /home/$NB_USER/.jupyter/tmp.py
 RUN cat /home/$NB_USER/.jupyter/tmp.py >> /home/$NB_USER/.jupyter/jupyter_notebook_config.py && rm /home/$NB_USER/.jupyter/tmp.py
 
+RUN pip install --upgrade pip
+RUN pip --disable-pip-version-check list --outdated --format=json | python -c "import json, sys; print('\n'.join([x['name'] for x in json.load(sys.stdin)]))" | xargs -n1 pip install -U
+RUN pip install jupyter --upgrade
+
 # step 1 to disable downloads:
 RUN jupyter labextension disable @jupyterlab/docmanager-extension:download \
     && jupyter labextension disable @jupyterlab/filebrowser-extension:download
