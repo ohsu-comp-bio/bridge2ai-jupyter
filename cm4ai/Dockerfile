@@ -1,5 +1,5 @@
 # use base image
-FROM quay.io/ohsu-comp-bio/bridge2ai-jupyter:restricted-gpu-root
+FROM quay.io/ohsu-comp-bio/bridge2ai-jupyter:cpu-root
 
 # return to non-root user
 USER $NB_UID
@@ -17,4 +17,18 @@ RUN cd b2ai-f2f/cellmaps_pipeline \
     && make dist \
     && pip install dist/cellmaps_pipeline*whl
 
+# add g3t
+SHELL ["conda", "run", "-n", "base", "/bin/bash", "-c"]
+RUN pip install --upgrade pip 
+RUN pip install gen3-tracker \
+    && pip install -U gen3-tracker
+
+# allow use of conda envs
 RUN conda init bash && exec bash
+
+# add gen3-client
+RUN wget https://github.com/ACED-IDP/cdis-data-client/releases/latest/download/gen3-client-linux-amd64.zip \
+    && unzip gen3-client-linux-amd64.zip \
+    && mkdir ~/.gen3 \
+    && echo 'export PATH=$PATH:~/.gen3' >> ~/.bashrc \
+    && source ~/.bashrc
