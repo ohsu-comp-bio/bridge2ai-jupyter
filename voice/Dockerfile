@@ -17,7 +17,8 @@ RUN python -m ipykernel install --user --name voice --display-name "Python (voic
 # download models
 RUN MODEL_DIR=$HOME/models && \
    huggingface-cli download --local-dir $MODEL_DIR/speechbrain/spkrec-ecapa-voxceleb speechbrain/spkrec-ecapa-voxceleb --cache-dir ${MODEL_DIR}/cache && \
-   huggingface-cli download --local-dir $MODEL_DIR/openai/whisper-base openai/whisper-base --cache-dir ${MODEL_DIR}/cache
+   huggingface-cli download --local-dir $MODEL_DIR/openai/whisper-base openai/whisper-base --cache-dir ${MODEL_DIR}/cache && \
+   huggingface-cli download --local-dir $MODEL_DIR/sentence-transformers/all-MiniLM-L6-v2 sentence-transformers/all-MiniLM-L6-v2 --cache-dir ${MODEL_DIR}/cache
 
 # add g3t
 SHELL ["conda", "run", "-n", "base", "/bin/bash", "-c"]
