@@ -10,7 +10,7 @@ WORKDIR /home/$NB_USER
 RUN conda create -n voice
 SHELL ["conda", "run", "-n", "voice", "/bin/bash", "-c"]
 RUN conda install python=3.11
-RUN pip install --no-cache-dir b2aiprep ipympl huggingface_hub[cli]
+RUN pip install --no-cache-dir b2aiprep==0.12.1 ipympl huggingface_hub[cli]
 RUN pip install ipykernel
 RUN python -m ipykernel install --user --name voice --display-name "Python (voice)"
 
