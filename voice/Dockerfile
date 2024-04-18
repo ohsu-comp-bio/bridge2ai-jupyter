@@ -43,3 +43,5 @@ RUN rm gen3-client-linux-amd64.zip \
 # return to non-root user
 USER $NB_UID
 WORKDIR /home/$NB_USER
+
+COPY --chown=$NB_USER:$NB_GID init.sh .
