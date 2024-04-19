@@ -10,14 +10,15 @@ WORKDIR /home/$NB_USER
 RUN conda create -n voice
 SHELL ["conda", "run", "-n", "voice", "/bin/bash", "-c"]
 RUN conda install python=3.11
-RUN pip install --no-cache-dir b2aiprep ipympl huggingface_hub[cli]
+RUN pip install --no-cache-dir b2aiprep==0.13.0 ipympl huggingface_hub[cli]
 RUN pip install ipykernel
 RUN python -m ipykernel install --user --name voice --display-name "Python (voice)"
 
 # download models
 RUN MODEL_DIR=$HOME/models && \
    huggingface-cli download --local-dir $MODEL_DIR/speechbrain/spkrec-ecapa-voxceleb speechbrain/spkrec-ecapa-voxceleb --cache-dir ${MODEL_DIR}/cache && \
-   huggingface-cli download --local-dir $MODEL_DIR/openai/whisper-base openai/whisper-base --cache-dir ${MODEL_DIR}/cache
+   huggingface-cli download --local-dir $MODEL_DIR/openai/whisper-base openai/whisper-base --cache-dir ${MODEL_DIR}/cache && \
+   huggingface-cli download --local-dir $MODEL_DIR/sentence-transformers/all-MiniLM-L6-v2 sentence-transformers/all-MiniLM-L6-v2 --cache-dir ${MODEL_DIR}/cache
 
 # add g3t
 SHELL ["conda", "run", "-n", "base", "/bin/bash", "-c"]
@@ -42,3 +43,5 @@ RUN rm gen3-client-linux-amd64.zip \
 # return to non-root user
 USER $NB_UID
 WORKDIR /home/$NB_USER
+
+COPY --chown=$NB_USER:$NB_GID init.sh .
